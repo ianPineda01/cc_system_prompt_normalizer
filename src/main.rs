@@ -103,14 +103,14 @@ async fn proxy(State(verbose): State<Arc<bool>>, req: Request) -> Result<Respons
             StatusCode::BAD_GATEWAY
         })?;
 
-    // Build response
+    // Build streaming response
     let status = StatusCode::from_u16(resp.status().as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
     let resp_headers = resp.headers().clone();
-    let resp_bytes = resp.bytes().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
 
-    let mut response = (status, Body::from(resp_bytes)).into_response();
+    let body = Body::from_stream(resp.bytes_stream());
+    let mut response = (status, body).into_response();
     for (key, val) in resp_headers.iter() {
-        if key != "transfer-encoding" {
+        if key != "transfer-encoding" && key != "content-length" {
             response
                 .headers_mut()
                 .insert(key.clone(), val.clone());
